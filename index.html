@@ -203,7 +203,7 @@
             justify-content: space-between;
             align-items: center;
             border-left: 4px solid #cbd5e1;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: 9 0.15s ease, box-shadow 0.15s ease;
             position: relative;
         }
 
@@ -293,6 +293,31 @@
         .btn-modal-cancel { background-color: #e2e8f0; color: #475569; }
         .btn-modal-save { background-color: #3498db; color: white; }
 
+        /* Estilos do Menu Mover */
+        .move-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .btn-move-option {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s;
+        }
+
+        .btn-move-option:hover {
+            background: #e2e8f0;
+        }
+
         @media (max-width: 768px) {
             body { padding: 8px; }
             .board { scroll-snap-type: x mandatory; }
@@ -304,7 +329,7 @@
 
     <header>
         <h1>Organizador de Prioridades</h1>
-        <p>Arraste, edite e acompanhe suas conquistas em tempo real!</p>
+        <p>Arraste ou segure no item para mudar de coluna!</p>
     </header>
 
     <div class="action-bar">
@@ -357,6 +382,7 @@
         </div>
     </div>
 
+    <!-- Modal Editar -->
     <div class="modal-overlay" id="editModal">
         <div class="modal">
             <h2>Editar Item</h2>
@@ -369,6 +395,23 @@
         </div>
     </div>
 
+    <!-- Modal Mover Item -->
+    <div class="modal-overlay" id="moveModal">
+        <div class="modal">
+            <h2>Mover Item para:</h2>
+            <p id="move-item-title" style="font-size: 0.9rem; color: #64748b; font-weight: bold;"></p>
+            <div class="move-options">
+                <button class="btn-move-option" onclick="moveCardToCol(1)">📋 Todos os Itens</button>
+                <button class="btn-move-option" onclick="moveCardToCol(2)">🎯 1º Filtro</button>
+                <button class="btn-move-option" onclick="moveCardToCol(3)">⚡ 2º Filtro</button>
+                <button class="btn-move-option" onclick="moveCardToCol(4)">🚀 3º Filtro</button>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal-cancel" onclick="closeMoveModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <!-- Conexão com o Firebase -->
@@ -376,7 +419,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Credenciais extraídas da sua conta do Firebase:
         const firebaseConfig = {
             apiKey: "AIzaSyC-vANjpGRSJpE32CjZUxMsX7NKS1W4GS8",
             authDomain: "prioridades-c2b43.firebaseapp.com",
@@ -486,6 +528,25 @@
                     <button class="btn-action btn-delete" onclick="removeItem(this)" title="Excluir item">×</button>
                 </div>
             `;
+
+            // Detectar clique e segurar (Press and Hold)
+            let pressTimer;
+            const startPress = () => {
+                pressTimer = setTimeout(() => {
+                    openMoveModal(card);
+                }, 500); // 500ms segurando
+            };
+            const cancelPress = () => {
+                clearTimeout(pressTimer);
+            };
+
+            card.addEventListener('touchstart', startPress, { passive: true });
+            card.addEventListener('touchend', cancelPress);
+            card.addEventListener('touchmove', cancelPress);
+            card.addEventListener('mousedown', startPress);
+            card.addEventListener('mouseup', cancelPress);
+            card.addEventListener('mouseleave', cancelPress);
+
             return card;
         };
 
@@ -529,6 +590,27 @@
             window.currentEditingCard.querySelector('.card-val').innerText = formatMoney(newVal);
 
             closeEditModal();
+            updateTotals();
+            saveBoardState();
+        };
+
+        // Funções para Mover via Modal
+        window.openMoveModal = function(card) {
+            window.currentMovingCard = card;
+            document.getElementById('move-item-title').innerText = card.dataset.name;
+            document.getElementById('moveModal').style.display = 'flex';
+        };
+
+        window.closeMoveModal = function() {
+            window.currentMovingCard = null;
+            document.getElementById('moveModal').style.display = 'none';
+        };
+
+        window.moveCardToCol = function(colNum) {
+            if (!window.currentMovingCard) return;
+            const targetContainer = document.getElementById(`col-${colNum}`);
+            targetContainer.prepend(window.currentMovingCard);
+            closeMoveModal();
             updateTotals();
             saveBoardState();
         };
