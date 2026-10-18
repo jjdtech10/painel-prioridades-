@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Prioridades - Compartilhado</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --primary: #2c3e50;
+            --accent: #f39c12;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #333;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-save {
+            background-color: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn-save:hover { background-color: #059669; }
+        .btn-save:active { transform: scale(0.98); }
+
+        .btn-reset {
+            background-color: #64748b;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-reset:hover { background-color: #475569; }
+
+        .save-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 100;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .board {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 15px;
+            flex: 1;
+            align-items: flex-start;
+        }
+
+        .column {
+            background-color: #ebedf0;
+            border-radius: 12px;
+            min-width: 280px;
+            max-width: 320px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .column-header {
+            padding: 12px 15px;
+            background-color: var(--card-bg);
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            border-bottom: 2px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .column-title { font-weight: 700; font-size: 1rem; color: var(--primary); }
+        .col-1 .column-header { border-bottom-color: #3498db; }
+        .col-2 .column-header { border-bottom-color: #f1c40f; }
+        .col-3 .column-header { border-bottom-color: #e67e22; }
+        .col-4 .column-header { border-bottom-color: #2ecc71; }
+
+        .add-item-box {
+            padding: 10px;
+            background-color: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .add-item-box input {
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .add-item-box input:focus { border-color: #3498db; }
+
+        .add-item-box button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .add-item-box button:hover { background-color: #2980b9; }
+
+        .items-container {
+            padding: 10px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 150px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            cursor: grab;
+            user-select: none;
+            touch-action: manipulation;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #cbd5e1;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            position: relative;
+        }
+
+        .card:active { cursor: grabbing; }
+        .card.dragging { opacity: 0.5; transform: scale(0.98); }
+
+        .card-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #1e293b;
+            padding-right: 8px;
+            flex: 1;
+        }
+
+        .card-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-val {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #0f766e;
+            background-color: #ccfbf1;
+            padding: 4px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-action {
+            background: none;
+            border: none;
+            font-size: 0.95rem;
+            cursor: pointer;
+            padding: 2px 4px;
+            line-height: 1;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .btn-action:hover { opacity: 1; }
+        .btn-delete { color: #ef4444; font-weight: bold; font-size: 1rem; }
+        .btn-edit { color: #f59e0b; }
+
+        .column-footer {
+            padding: 12px 15px;
+            background-color: var(--card-bg);
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .total-label { font-size: 0.9rem; color: #64748b; }
+        .total-value { font-size: 1.05rem; color: #0f172a; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .modal {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 360px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal h2 { font-size: 1.1rem; color: var(--primary); }
+        .modal input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; outline: none; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; }
+        .modal-buttons button { padding: 8px 14px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-modal-cancel { background-color: #e2e8f0; color: #475569; }
+        .btn-modal-save { background-color: #3498db; color: white; }
+
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            .board { scroll-snap-type: x mandatory; }
+            .column { scroll-snap-align: center; min-width: 85vw; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Organizador de Prioridades</h1>
+        <p>Arraste, edite e acompanhe suas conquistas em tempo real!</p>
+    </header>
+
+    <div class="action-bar">
+        <button class="btn-save" onclick="saveBoardState()">💾 Salvar na Nuvem</button>
+        <button class="btn-reset" onclick="resetToInitialData()">🔄 Restaurar Padrão</button>
+    </div>
+
+    <div class="save-toast" id="toast">✅ Salvo com sucesso!</div>
+
+    <div class="board">
+        <div class="column col-1">
+            <div class="column-header"><span class="column-title">Todos os Itens</span></div>
+            <div class="add-item-box">
+                <input type="text" id="new-item-name" placeholder="Nome do item (ex: TV 55')">
+                <input type="number" id="new-item-val" placeholder="Valor (ex: 2500)">
+                <button onclick="addNewItem()">+ Adicionar Item</button>
+            </div>
+            <div class="items-container" id="col-1"></div>
+            <div class="column-footer">
+                <span class="total-label">Total:</span>
+                <span class="total-value" id="total-1">R$ 0</span>
+            </div>
+        </div>
+
+        <div class="column col-2">
+            <div class="column-header"><span class="column-title">1º Filtro</span></div>
+            <div class="items-container" id="col-2"></div>
+            <div class="column-footer">
+                <span class="total-label">Total:</span>
+                <span class="total-value" id="total-2">R$ 0</span>
+            </div>
+        </div>
+
+        <div class="column col-3">
+            <div class="column-header"><span class="column-title">2º Filtro</span></div>
+            <div class="items-container" id="col-3"></div>
+            <div class="column-footer">
+                <span class="total-label">Total:</span>
+                <span class="total-value" id="total-3">R$ 0</span>
+            </div>
+        </div>
+
+        <div class="column col-4">
+            <div class="column-header"><span class="column-title">3º Filtro</span></div>
+            <div class="items-container" id="col-4"></div>
+            <div class="column-footer">
+                <span class="total-label">Total:</span>
+                <span class="total-value" id="total-4">R$ 0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h2>Editar Item</h2>
+            <input type="text" id="edit-item-name" placeholder="Nome do item">
+            <input type="number" id="edit-item-val" placeholder="Valor do item">
+            <div class="modal-buttons">
+                <button class="btn-modal-cancel" onclick="closeEditModal()">Cancelar</button>
+                <button class="btn-modal-save" onclick="saveEditedItem()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <!-- Conexão com o Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Credenciais extraídas da sua conta do Firebase:
+        const firebaseConfig = {
+            apiKey: "AIzaSyC-vANjpGRSJpE32CjZUxMsX7NKS1W4GS8",
+            authDomain: "prioridades-c2b43.firebaseapp.com",
+            databaseURL: "https://prioridades-c2b43-default-rtdb.firebaseio.com",
+            projectId: "prioridades-c2b43",
+            storageBucket: "prioridades-c2b43.firebasestorage.app",
+            messagingSenderId: "939552138287",
+            appId: "1:939552138287:web:44712a5188d839200312da",
+            measurementId: "G-JGM9EW98CE"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const boardRef = ref(db, 'painel_prioridades');
+
+        const defaultData = {
+            col1: [
+                { name: "guarda roupa Davi", val: 8000 },
+                { name: "painel e mesa Davi", val: 3000 },
+                { name: "armario cozinha", val: 10000 },
+                { name: "Closet Casal", val: 10000 },
+                { name: "armario area gormet", val: 7000 },
+                { name: "painel sala", val: 2000 },
+                { name: "sofa", val: 3000 },
+                { name: "mesa sala de jantar", val: 7000 },
+                { name: "ar condicionado sala", val: 3000 },
+                { name: "ar condicionado 2 quartos", val: 4000 },
+                { name: "geladeira", val: 4600 },
+                { name: "forno", val: 1200 },
+                { name: "coifa", val: 600 },
+                { name: "piso e borda area externa fundo e mo", val: 4000 },
+                { name: "mao de obra piso corredor e frente", val: 1530 },
+                { name: "diferença porta do quarto", val: 1000 },
+                { name: "diferença porta do banheiro", val: 600 },
+                { name: "diferença porta da lavanderia", val: 600 },
+                { name: "pedra e tanque lavanderia", val: 1500 },
+                { name: "nicho banheiros x2", val: 700 },
+                { name: "diferença vasos sanitarios", val: 500 },
+                { name: "espelhos banheiros 3x", val: 1000 },
+                { name: "churrasqueira", val: 1000 },
+                { name: "acabamento gesso teto moldura", val: 4000 },
+                { name: "mesa jantar area gourmet", val: 5000 },
+                { name: "mesa jantar cozinha", val: 3000 },
+                { name: "armarios banheiros Davi", val: 1000 },
+                { name: "box", val: 2100 },
+                { name: "portao motor, trava, tetra", val: 2500 },
+                { name: "cameras", val: 1560 }
+            ],
+            col2: [], col3: [], col4: []
+        };
+
+        window.saveBoardState = function() {
+            const boardState = { col1: [], col2: [], col3: [], col4: [] };
+            for (let i = 1; i <= 4; i++) {
+                const container = document.getElementById(`col-${i}`);
+                const cards = container.querySelectorAll('.card');
+                cards.forEach(card => {
+                    boardState[`col${i}`].push({
+                        name: card.dataset.name,
+                        val: parseInt(card.dataset.val)
+                    });
+                });
+            }
+
+            set(boardRef, boardState).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => { toast.style.display = 'none'; }, 2500);
+            });
+        };
+
+        window.resetToInitialData = function() {
+            if (confirm("Tem certeza que deseja restaurar a lista original para ambos?")) {
+                set(boardRef, defaultData);
+            }
+        };
+
+        onValue(boardRef, (snapshot) => {
+            const data = snapshot.val() || defaultData;
+            renderBoard(data);
+        });
+
+        function renderBoard(dataToLoad) {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`col-${i}`).innerHTML = '';
+            }
+            for (let i = 1; i <= 4; i++) {
+                const container = document.getElementById(`col-${i}`);
+                const items = dataToLoad[`col${i}`] || [];
+                items.forEach(item => {
+                    container.appendChild(createCardElement(item.name, item.val));
+                });
+            }
+            updateTotals();
+        }
+
+        window.createCardElement = function(name, val) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.name = name;
+            card.dataset.val = val;
+            card.innerHTML = `
+                <span class="card-name">${name}</span>
+                <div class="card-right">
+                    <span class="card-val">${formatMoney(val)}</span>
+                    <button class="btn-action btn-edit" onclick="openEditModal(this)" title="Editar item">✏️</button>
+                    <button class="btn-action btn-delete" onclick="removeItem(this)" title="Excluir item">×</button>
+                </div>
+            `;
+            return card;
+        };
+
+        window.formatMoney = function(val) {
+            return "R$ " + val.toLocaleString('pt-BR');
+        };
+
+        window.updateTotals = function() {
+            for (let i = 1; i <= 4; i++) {
+                const container = document.getElementById(`col-${i}`);
+                const cards = container.querySelectorAll('.card');
+                let sum = 0;
+                cards.forEach(card => {
+                    sum += parseInt(card.dataset.val) || 0;
+                });
+                document.getElementById(`total-${i}`).innerText = formatMoney(sum);
+            }
+        };
+
+        window.openEditModal = function(btn) {
+            window.currentEditingCard = btn.closest('.card');
+            document.getElementById('edit-item-name').value = window.currentEditingCard.dataset.name;
+            document.getElementById('edit-item-val').value = window.currentEditingCard.dataset.val;
+            document.getElementById('editModal').style.display = 'flex';
+        };
+
+        window.closeEditModal = function() {
+            window.currentEditingCard = null;
+            document.getElementById('editModal').style.display = 'none';
+        };
+
+        window.saveEditedItem = function() {
+            if (!window.currentEditingCard) return;
+            const newName = document.getElementById('edit-item-name').value.trim();
+            const newVal = parseInt(document.getElementById('edit-item-val').value);
+            if (!newName || isNaN(newVal) || newVal < 0) return;
+
+            window.currentEditingCard.dataset.name = newName;
+            window.currentEditingCard.dataset.val = newVal;
+            window.currentEditingCard.querySelector('.card-name').innerText = newName;
+            window.currentEditingCard.querySelector('.card-val').innerText = formatMoney(newVal);
+
+            closeEditModal();
+            updateTotals();
+            saveBoardState();
+        };
+
+        window.addNewItem = function() {
+            const nameInput = document.getElementById('new-item-name');
+            const valInput = document.getElementById('new-item-val');
+            const name = nameInput.value.trim();
+            const val = parseInt(valInput.value);
+
+            if (!name || isNaN(val) || val < 0) return;
+
+            const col1Container = document.getElementById('col-1');
+            const newCard = createCardElement(name, val);
+            col1Container.prepend(newCard);
+
+            nameInput.value = '';
+            valInput.value = '';
+
+            updateTotals();
+            saveBoardState();
+        };
+
+        window.removeItem = function(btn) {
+            btn.closest('.card').remove();
+            updateTotals();
+            saveBoardState();
+        };
+
+        const containers = document.querySelectorAll('.items-container');
+        containers.forEach(container => {
+            new Sortable(container, {
+                group: 'shared-board',
+                animation: 150,
+                ghostClass: 'dragging',
+                delay: 100,
+                delayOnTouchOnly: true,
+                onEnd: function () {
+                    updateTotals();
+                    saveBoardState();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
